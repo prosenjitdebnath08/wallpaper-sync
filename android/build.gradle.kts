@@ -20,12 +20,11 @@ subprojects {
 }
 
 subprojects {
-    afterEvaluate {
-        project.extensions.findByName("android")?.let { ext ->
-            try {
-                ext.javaClass.getMethod("compileSdkVersion", Int::class.javaPrimitiveType).invoke(ext, 36)
-            } catch (e: Exception) {}
-        }
+    project.plugins.withId("com.android.library") {
+        val android = project.extensions.findByName("android")
+        try {
+            android?.javaClass?.getMethod("setCompileSdkVersion", Int::class.javaPrimitiveType)?.invoke(android, 36)
+        } catch (e: Exception) {}
     }
 }
 
