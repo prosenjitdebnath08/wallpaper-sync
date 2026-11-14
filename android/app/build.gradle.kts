@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.wallpapersync.app"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -18,7 +18,7 @@ android {
     defaultConfig {
         applicationId = "com.wallpapersync.app"
         minSdk = 21
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
