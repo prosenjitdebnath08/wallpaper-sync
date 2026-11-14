@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Wallpaper Sync Remote</title>
+  <!-- Official Firebase Web SDK (No CORS issues) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: #0f111a; color: #ffffff; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+    .container { width: 100%; max-width: 480px; }
+    header { text-align: center; margin-bottom: 24px; padding-top: 10px; }
+    h1 { font-size: 26px; font-weight: 800; background: linear-gradient(135deg, #60a5fa, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    p.subtitle { color: #94a3b8; font-size: 14px; margin-top: 6px; }
+    
+    .status-card { background: #1e293b; border: 1px solid #334155; border-radius: 14px; padding: 14px 18px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; }
+    .status-dot { width: 12px; height: 12px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 10px #22c55e; }
+    .status-text { font-size: 13px; color: #cbd5e1; }
+    .status-text strong { color: #f8fafc; display: block; font-size: 14px; }
+
+    h2 { font-size: 17px; margin-bottom: 12px; color: #e2e8f0; font-weight: 600; }
+    
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+    .card { position: relative; border-radius: 12px; overflow: hidden; height: 150px; cursor: pointer; border: 2px solid transparent; transition: transform 0.2s, border-color 0.2s; }
+    .card:active { transform: scale(0.97); }
+    .card img { width: 100%; height: 100%; object-fit: cover; }
+    .card .title { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.85)); padding: 8px 10px; font-size: 12px; font-weight: 600; }
+    
+    .custom-box { background: #1e293b; border: 1px solid #334155; border-radius: 14px; padding: 16px; margin-bottom: 24px; }
+    input[type="text"] { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #475569; border-radius: 8px; color: white; font-size: 14px; margin-bottom: 10px; }
+    button.btn-send { width: 100%; padding: 12px; background: #3b82f6; color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; }
+    button.btn-send:active { background: #2563eb; }
+
+    #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #22c55e; color: white; padding: 12px 24px; border-radius: 30px; font-weight: 600; font-size: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+    #toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Wallpaper Sync</h1>
+      <p class="subtitle">Tap any wallpaper to change your Mac screen</p>
+    </header>
+
+    <div class="status-card">
+      <div class="status-dot"></div>
+      <div class="status-text">
+        <strong id="status-headline">Connected to Google Cloud</strong>
+        <span id="status-desc">Ready to sync live</span>
+      </div>
+    </div>
+
+    <h2>Preset Wallpapers</h2>
+    <div class="grid">
+      <div class="card" onclick="sendWallpaper('https://images.unsplash.com/photo-1506744038136-46273834b3fb', 'Mountain River')">
+        <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=400" alt="Mountain River">
+        <div class="title">Mountain River</div>
+      </div>
+      <div class="card" onclick="sendWallpaper('https://images.unsplash.com/photo-1519681393784-d120267933ba', 'Starry Alps')">
+        <img src="https://images.unsplash.com/photo-1519681393784-d120267933ba?w=400" alt="Starry Alps">
+        <div class="title">Starry Alps</div>
+      </div>
+      <div class="card" onclick="sendWallpaper('https://images.unsplash.com/photo-1518709268805-4e9042af9f23', 'Cyberpunk Neon')">
+        <img src="https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=400" alt="Cyberpunk Neon">
+        <div class="title">Cyberpunk Neon</div>
+      </div>
+      <div class="card" onclick="sendWallpaper('https://images.unsplash.com/photo-1507525428034-b723cf961d3e', 'Tropical Beach')">
+        <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400" alt="Tropical Beach">
+        <div class="title">Tropical Beach</div>
+      </div>
+      <div class="card" onclick="sendWallpaper('https://images.unsplash.com/photo-1451187580459-43490279c0fa', 'Deep Space')">
+        <img src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=400" alt="Deep Space">
+        <div class="title">Deep Space</div>
+      </div>
+      <div class="card" onclick="sendWallpaper('https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05', 'Misty Forest')">
+        <img src="https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=400" alt="Misty Forest">
+        <div class="title">Misty Forest</div>
+      </div>
+    </div>
+
+    <h2>Or Paste Any Image Link</h2>
+    <div class="custom-box">
+      <input type="text" id="custom-url" placeholder="https://example.com/photo.jpg">
+      <button class="btn-send" onclick="sendCustom()">Apply to Mac</button>
+    </div>
+  </div>
+
+  <div id="toast">Wallpaper updated on your Mac!</div>
+
+  <script>
+    // Initialize Google Firebase Official SDK
+    const firebaseConfig = {
+      apiKey: "AIzaSyDWV5I2zpJs6pocOS821557RGGgPxfkqaY",
+      projectId: "wallpaper-sync-app",
+      storageBucket: "wallpaper-sync-app.firebasestorage.app",
+      messagingSenderId: "793432872703",
+      appId: "1:793432872703:web:d2518ddfc9390c5c365eca"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    async function sendWallpaper(imageUrl, name) {
+      const headline = document.getElementById("status-headline");
+      const desc = document.getElementById("status-desc");
+      
+      headline.innerText = "Syncing...";
+      desc.innerText = "Sending " + name + " to Google Cloud...";
+
+      try {
+        // Write to Firestore using official SDK
+        await db.collection("sync").doc("current").set({
+          url: imageUrl,
+          updatedAt: new Date().toISOString()
+        });
+
+        headline.innerText = "Connected to Mac";
+        desc.innerText = "Active: " + name;
+        showToast("Changed to " + name + "!");
+      } catch (err) {
+        console.error("Firestore error:", err);
+        headline.innerText = "Sync Notice";
+        desc.innerText = err.message;
+        alert("Notice: " + err.message);
+      }
+    }
+
+    function sendCustom() {
+      const url = document.getElementById("custom-url").value.trim();
+      if (!url) return alert("Please enter an image link first!");
+      sendWallpaper(url, "Custom Image");
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById("toast");
+      t.innerText = msg;
+      t.classList.add("show");
+      setTimeout(() => t.classList.remove("show"), 2500);
+    }
+  </script>
+</body>
+</html>

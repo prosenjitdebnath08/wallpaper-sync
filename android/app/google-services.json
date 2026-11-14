@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "793432872703",
+    "project_id": "wallpaper-sync-app",
+    "storage_bucket": "wallpaper-sync-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:793432872703:android:d2518ddfc9390c5c365eca",
+        "android_client_info": {
+          "package_name": "com.wallpapersync.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDWV5I2zpJs6pocOS821557RGGgPxfkqaY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
