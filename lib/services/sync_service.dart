@@ -1,18 +1,18 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:wallpaper_sync/models/device_model.dart';
 import 'package:wallpaper_sync/models/wallpaper_model.dart';
 import 'package:wallpaper_sync/services/wallpaper_service.dart';
 
 class SyncService extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
 
   String? _deviceId;
@@ -126,18 +126,31 @@ class SyncService extends ChangeNotifier {
     });
   }
 
-  /// Update the wallpaper across all devices
+  /// Update the wallpaper across all devices (Zero-billing Free Cloud)
   Future<void> publishWallpaper({
     required File imageFile,
     required String title,
     required String userId,
   }) async {
     try {
-      // 1. Upload to Firebase Storage
-      final String filename = '${DateTime.now().millisecondsSinceEpoch}_${title.replaceAll(' ', '_')}.jpg';
-      final ref = _storage.ref().child('users/$userId/wallpapers/$filename');
-      final uploadTask = await ref.putFile(imageFile);
-      final String downloadUrl = await uploadTask.ref.getDownloadURL();
+      // 1. Upload to 100% Free Image Cloud (No credit card / Blaze billing needed)
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('https://tmpfiles.org/api/v1/upload'),
+      );
+      request.files.add(await http.MultipartFile.fromPath('file', imageFile.path));
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      String downloadUrl = '';
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final String rawUrl = data['data']['url'] as String;
+        // Convert to direct download link
+        downloadUrl = rawUrl.replaceFirst('tmpfiles.org/', 'tmpfiles.org/dl/');
+      } else {
+        throw Exception('Failed to upload image: HTTP ${response.statusCode}');
+      }
 
       // 2. Add to wallpaper collection
       final newDoc = _firestore
@@ -150,7 +163,7 @@ class SyncService extends ChangeNotifier {
         'url': downloadUrl,
         'title': title,
         'uploadedBy': userId,
-        'sourceDevice': _deviceName ?? 'Unknown',
+        'sourceDevice': _deviceName ?? 'Android Phone',
         'sourceDeviceId': _deviceId,
         'createdAt': FieldValue.serverTimestamp(),
       });
@@ -170,7 +183,14 @@ class SyncService extends ChangeNotifier {
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      // 4. Also immediately apply on this local device
+      // 4. Also update global sync document for Mac agent
+      await _firestore.collection('sync').doc('current').set({
+        'url': downloadUrl,
+        'title': title,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      // 5. Also immediately apply on this local phone
       await WallpaperService.setWallpaperFromFile(imageFile.path);
       _currentWallpaperUrl = downloadUrl;
       notifyListeners();
