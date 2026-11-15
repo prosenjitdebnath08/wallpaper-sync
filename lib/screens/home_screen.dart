@@ -193,70 +193,39 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   CircularProgressIndicator(),
                   SizedBox(height: 16),
-                  Text('Uploading & broadcasting wallpaper to all devices...'),
+                  Text('Uploading & syncing wallpaper across all devices...'),
                 ],
               ),
             )
           : RefreshIndicator(
               onRefresh: () async => setState(() {}),
-              child: CustomScrollView(
-                slivers: [
-                  // Active Wallpaper Header Preview
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                'Active Desktop / Device Wallpaper',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.green.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.green),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.sync_rounded,
-                                      size: 14,
-                                      color: Colors.green,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      sync.isAutoApplyEnabled
-                                          ? 'Sync: Active'
-                                          : 'Sync: Paused',
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.green,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Active Wallpaper Preview Card
+                    Container(
+                      width: double.infinity,
+                      constraints: const BoxConstraints(maxHeight: 460),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 15,
+                            offset: const Offset(0, 8),
                           ),
-                          const SizedBox(height: 12),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: Container(
-                              height: 220,
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Container(
+                              height: 440,
                               width: double.infinity,
                               color: Colors.grey.shade900,
                               child: sync.currentWallpaperUrl != null
@@ -266,9 +235,18 @@ class _HomeScreenState extends State<HomeScreen> {
                                       placeholder: (ctx, url) => const Center(
                                         child: CircularProgressIndicator(),
                                       ),
-                                      errorWidget: (ctx, url, err) =>
-                                          const Center(
-                                        child: Icon(Icons.broken_image, size: 48),
+                                      errorWidget: (ctx, url, err) => Center(
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.image_outlined, size: 54, color: Colors.grey.shade600),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              'Active wallpaper set',
+                                              style: TextStyle(color: Colors.grey.shade400),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     )
                                   : Center(
@@ -277,7 +255,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         children: [
                                           Icon(
                                             Icons.image_outlined,
-                                            size: 48,
+                                            size: 54,
                                             color: Colors.grey.shade600,
                                           ),
                                           const SizedBox(height: 8),
@@ -291,244 +269,110 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ),
                                     ),
                             ),
-                          ),
-                          const SizedBox(height: 16),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                            // Gradient bottom overlay
+                            Positioned(
+                              bottom: 0,
+                              left: 0,
+                              right: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.bottomCenter,
+                                    end: Alignment.topCenter,
+                                    colors: [
+                                      Colors.black.withOpacity(0.85),
+                                      Colors.transparent,
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              icon: const Icon(Icons.add_photo_alternate_rounded),
-                              label: const Text(
-                                'Upload & Change on All Devices',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              onPressed: _pickAndUploadWallpaper,
-                            ),
-                          ),
-                          const Divider(height: 36),
-                          const Text(
-                            'Wallpaper Library',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Tap any wallpaper to immediately push it to all linked devices.',
-                            style: TextStyle(
-                              color: Colors.grey.shade600,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // Wallpaper Gallery Stream
-                  StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(user.uid)
-                        .collection('wallpapers')
-                        .orderBy('createdAt', descending: true)
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState ==
-                          ConnectionState.waiting) {
-                        return const SliverToBoxAdapter(
-                          child: Center(
-                            child: Padding(
-                              padding: EdgeInsets.all(32),
-                              child: CircularProgressIndicator(),
-                            ),
-                          ),
-                        );
-                      }
-
-                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                        return SliverToBoxAdapter(
-                          child: Padding(
-                            padding: const EdgeInsets.all(32),
-                            child: Center(
-                              child: Text(
-                                'No saved wallpapers yet.\nClick above to upload your first one!',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(color: Colors.grey.shade500),
-                              ),
-                            ),
-                          ),
-                        );
-                      }
-
-                      final wallpapers = snapshot.data!.docs
-                          .map((d) => WallpaperModel.fromFirestore(d))
-                          .toList();
-
-                      return SliverPadding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        sliver: SliverGrid(
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            childAspectRatio: 0.75,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                          ),
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) {
-                              final wp = wallpapers[index];
-                              final isCurrent =
-                                  sync.currentWallpaperUrl == wp.url;
-                              return GestureDetector(
-                                onTap: () => _confirmSetWallpaper(wp),
-                                child: Stack(
+                                child: Row(
                                   children: [
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: isCurrent
-                                            ? Border.all(
-                                                color: Colors.blueAccent,
-                                                width: 3,
-                                              )
-                                            : null,
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withOpacity(0.08),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 4),
-                                          ),
-                                        ],
-                                      ),
-                                      child: ClipRRect(
-                                        borderRadius:
-                                            BorderRadius.circular(10),
-                                        child: CachedNetworkImage(
-                                          imageUrl: wp.url,
-                                          fit: BoxFit.cover,
-                                          width: double.infinity,
-                                          height: double.infinity,
+                                    const Icon(Icons.check_circle_rounded, color: Colors.greenAccent, size: 20),
+                                    const SizedBox(width: 8),
+                                    const Expanded(
+                                      child: Text(
+                                        'Active Wallpaper',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                     ),
-                                    if (isCurrent)
-                                      Positioned(
-                                        top: 8,
-                                        right: 8,
-                                        child: Container(
-                                          padding: const EdgeInsets.all(4),
-                                          decoration: const BoxDecoration(
-                                            color: Colors.blueAccent,
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: const Icon(
-                                            Icons.check,
-                                            color: Colors.white,
-                                            size: 16,
-                                          ),
-                                        ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: Colors.greenAccent, width: 1),
                                       ),
-                                    Positioned(
-                                      bottom: 0,
-                                      left: 0,
-                                      right: 0,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(8),
-                                        decoration: BoxDecoration(
-                                          borderRadius: const BorderRadius.only(
-                                            bottomLeft: Radius.circular(10),
-                                            bottomRight: Radius.circular(10),
-                                          ),
-                                          gradient: LinearGradient(
-                                            begin: Alignment.bottomCenter,
-                                            end: Alignment.topCenter,
-                                            colors: [
-                                              Colors.black.withOpacity(0.8),
-                                              Colors.transparent,
-                                            ],
-                                          ),
-                                        ),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(
-                                              wp.title,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                            Text(
-                                              'From ${wp.sourceDevice}',
-                                              maxLines: 1,
-                                              style: const TextStyle(
-                                                color: Colors.white70,
-                                                fontSize: 10,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
+                                      child: const Text(
+                                        'Synced',
+                                        style: TextStyle(color: Colors.greenAccent, fontSize: 12, fontWeight: FontWeight.bold),
                                       ),
                                     ),
                                   ],
                                 ),
-                              );
-                            },
-                            childCount: wallpapers.length,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Big Action Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.deepPurpleAccent,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          elevation: 3,
+                        ),
+                        icon: const Icon(Icons.add_photo_alternate_rounded, size: 22),
+                        label: const Text(
+                          'Upload & Change on All Devices',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                      );
-                    },
-                  ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 32)),
-                ],
+                        onPressed: _pickAndUploadWallpaper,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Device status info pill
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: Colors.white12),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.devices_rounded, size: 16, color: Colors.white70),
+                          SizedBox(width: 8),
+                          Text(
+                            'Synced across MacBook & Android Phone',
+                            style: TextStyle(color: Colors.white70, fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                ),
               ),
             ),
-    );
-  }
-
-  void _confirmSetWallpaper(WallpaperModel wp) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Apply "${wp.title}" everywhere?'),
-        content: const Text(
-          'This will automatically update the wallpaper on your MacBook, Android, and linked iOS devices.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              final auth = Provider.of<AuthService>(context, listen: false);
-              final sync = Provider.of<SyncService>(context, listen: false);
-              sync.setActiveWallpaper(
-                wallpaper: wp,
-                userId: auth.currentUser!.uid,
-              );
-            },
-            child: const Text('Apply Everywhere'),
-          ),
-        ],
-      ),
     );
   }
 }

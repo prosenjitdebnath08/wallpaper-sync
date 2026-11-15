@@ -133,32 +133,64 @@ class SyncService extends ChangeNotifier {
     required String userId,
   }) async {
     try {
-      // 1. Upload to 100% Free Image Cloud (No credit card / Blaze billing needed)
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse('https://tmpfiles.org/api/v1/upload'),
-      );
-      request.files.add(await http.MultipartFile.fromPath('file', imageFile.path));
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
-
       String downloadUrl = '';
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final String rawUrl = data['data']['url'] as String;
-        // Convert to direct download link
-        downloadUrl = rawUrl.replaceFirst('tmpfiles.org/', 'tmpfiles.org/dl/');
-      } else {
-        throw Exception('Failed to upload image: HTTP ${response.statusCode}');
+
+      // 1. Try permanent direct cloud hosting (catbox.moe)
+      try {
+        final catboxReq = http.MultipartRequest(
+          'POST',
+          Uri.parse('https://catbox.moe/user/api.php'),
+        );
+        catboxReq.fields['reqtype'] = 'fileupload';
+        catboxReq.files.add(
+          await http.MultipartFile.fromPath('fileToUpload', imageFile.path),
+        );
+        final catboxStreamed = await catboxReq.send().timeout(const Duration(seconds: 15));
+        final catboxRes = await http.Response.fromStream(catboxStreamed);
+        if (catboxRes.statusCode == 200 && catboxRes.body.trim().startsWith('http')) {
+          downloadUrl = catboxRes.body.trim();
+        }
+      } catch (e) {
+        debugPrint('Catbox notice: $e');
       }
 
-      // 2. Add to wallpaper collection
-      final newDoc = _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('wallpapers')
-          .doc();
+      // 2. Fallback to tmpfiles.org with direct image URL resolution
+      if (downloadUrl.isEmpty) {
+        final request = http.MultipartRequest(
+          'POST',
+          Uri.parse('https://tmpfiles.org/api/v1/upload'),
+        );
+        request.files.add(await http.MultipartFile.fromPath('file', imageFile.path));
+        final streamedResponse = await request.send();
+        final response = await http.Response.fromStream(streamedResponse);
 
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          final String rawUrl = data['data']['url'] as String;
+          try {
+            final pageRes = await http.get(Uri.parse(rawUrl));
+            final match = RegExp(r'https://tmpfiles\.org/dl/[^"]+').firstMatch(pageRes.body);
+            if (match != null) {
+              downloadUrl = match.group(0)!;
+            } else {
+              downloadUrl = rawUrl.replaceFirst('tmpfiles.org/', 'tmpfiles.org/dl/');
+            }
+          } catch (_) {
+            downloadUrl = rawUrl.replaceFirst('tmpfiles.org/', 'tmpfiles.org/dl/');
+          }
+        } else {
+          throw Exception('Failed to upload image: HTTP ${response.statusCode}');
+        }
+      }
+
+      // 3. Keep only the active wallpaper (Clean up old wallpapers)
+      final wallpapersCol = _firestore.collection('users').doc(userId).collection('wallpapers');
+      final oldDocs = await wallpapersCol.get();
+      for (final doc in oldDocs.docs) {
+        await doc.reference.delete();
+      }
+
+      final newDoc = wallpapersCol.doc();
       await newDoc.set({
         'url': downloadUrl,
         'title': title,
@@ -168,7 +200,7 @@ class SyncService extends ChangeNotifier {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      // 3. Update the active wallpaper state (Triggers cross-device sync!)
+      // 4. Update the active wallpaper state (Triggers cross-device sync!)
       await _firestore
           .collection('users')
           .doc(userId)
@@ -183,14 +215,14 @@ class SyncService extends ChangeNotifier {
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      // 4. Also update global sync document for Mac agent
+      // 5. Also update global sync document for Mac agent
       await _firestore.collection('sync').doc('current').set({
         'url': downloadUrl,
         'title': title,
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      // 5. Also immediately apply on this local phone
+      // 6. Also immediately apply on this local phone
       await WallpaperService.setWallpaperFromFile(imageFile.path);
       _currentWallpaperUrl = downloadUrl;
       notifyListeners();
