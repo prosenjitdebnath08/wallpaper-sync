@@ -18,6 +18,7 @@ class SyncService extends ChangeNotifier {
   String? _deviceId;
   String? _deviceName;
   String? _platformName;
+  String? _userEmail;
   String? _currentWallpaperUrl;
   bool _isAutoApplyEnabled = true;
   StreamSubscription? _wallpaperSubscription;
@@ -25,6 +26,7 @@ class SyncService extends ChangeNotifier {
   String? get deviceId => _deviceId;
   String? get deviceName => _deviceName;
   String? get platformName => _platformName;
+  String? get userEmail => _userEmail;
   String? get currentWallpaperUrl => _currentWallpaperUrl;
   bool get isAutoApplyEnabled => _isAutoApplyEnabled;
 
@@ -34,7 +36,8 @@ class SyncService extends ChangeNotifier {
   }
 
   /// Initialize device identity and register device with cloud backend
-  Future<void> initialize(String userId) async {
+  Future<void> initialize(String userId, {String userEmail = ''}) async {
+    _userEmail = userEmail;
     await _detectDeviceInfo();
     await _registerDevice(userId);
     _listenToActiveWallpaperChanges(userId);
@@ -131,6 +134,7 @@ class SyncService extends ChangeNotifier {
     required File imageFile,
     required String title,
     required String userId,
+    String userEmail = '',
   }) async {
     try {
       String downloadUrl = '';
@@ -183,6 +187,8 @@ class SyncService extends ChangeNotifier {
         }
       }
 
+      final resolvedEmail = userEmail.isNotEmpty ? userEmail : (_userEmail ?? '');
+
       // 3. Keep only the active wallpaper (Clean up old wallpapers)
       final wallpapersCol = _firestore.collection('users').doc(userId).collection('wallpapers');
       final oldDocs = await wallpapersCol.get();
@@ -197,6 +203,7 @@ class SyncService extends ChangeNotifier {
         'uploadedBy': userId,
         'sourceDevice': _deviceName ?? 'Android Phone',
         'sourceDeviceId': _deviceId,
+        'userEmail': resolvedEmail,
         'createdAt': FieldValue.serverTimestamp(),
       });
 
@@ -212,17 +219,31 @@ class SyncService extends ChangeNotifier {
         'title': title,
         'sourceDevice': _deviceName,
         'sourceDeviceId': _deviceId,
+        'userEmail': resolvedEmail,
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      // 5. Also update global sync document for Mac agent
+      // 5. Update user-specific email sync document for their Mac
+      if (resolvedEmail.isNotEmpty) {
+        final emailKey = resolvedEmail.toLowerCase().trim();
+        await _firestore.collection('users_sync').doc(emailKey).set({
+          'url': downloadUrl,
+          'title': title,
+          'email': emailKey,
+          'sourceDevice': _deviceName,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      // 6. Also update global sync document for backward compatibility
       await _firestore.collection('sync').doc('current').set({
         'url': downloadUrl,
         'title': title,
+        'email': resolvedEmail,
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      // 6. Also immediately apply on this local phone
+      // 7. Also immediately apply on this local phone
       await WallpaperService.setWallpaperFromFile(imageFile.path);
       _currentWallpaperUrl = downloadUrl;
       notifyListeners();

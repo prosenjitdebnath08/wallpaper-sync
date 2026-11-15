@@ -1,126 +1,93 @@
-# Wallpaper Sync (macOS • Android • iOS)
+# 📱💻 Wallpaper Sync
 
-A unified, real-time cross-device wallpaper synchronization app. When you change or upload a wallpaper on any device (MacBook, Android phone/tablet, or iPhone), all other connected devices logged into your Google Account automatically update their wallpaper.
+> **Seamless, real-time two-way wallpaper synchronization across Android and macOS.**  
+> Pick a photo on your Android phone, tap **Sync Everywhere**, and your MacBook desktop wallpaper automatically changes in **3 seconds**.
 
 ---
 
-## Architecture Overview
+## ⚡ Quick Start (Ready to Use in 60 Seconds)
+
+You and your friends can use this app immediately with zero setup or coding required:
+
+### 📱 1. On your Android Phone:
+1. Download **[`WallpaperSync.apk`](https://github.com/prosenjitdebnath08/wallpaper-sync/releases/latest)**.
+2. Tap **Install** (or Update).
+3. Open the app and tap **"Sign in with Google"**.
+
+### 💻 2. On your MacBook:
+1. Download **[`WallpaperSync-Mac.zip`](https://github.com/prosenjitdebnath08/wallpaper-sync/releases/latest)**.
+2. Unzip it and double-click **`Install_Mac.command`**.
+3. Press **[Enter]** when prompted. 
+4. *Done! The background sync agent is now permanently active.*
+
+### 🚀 3. Test Sync:
+- In the mobile app, tap **"Upload & Change on All Devices"**.
+- Pick any photo from your gallery and tap **"Sync Everywhere"**.
+- Watch your MacBook desktop update automatically within **3 seconds**!
+
+---
+
+## ✨ Features
+
+- **Private & Multi-User:** Every person's wallpapers sync only to their own devices based on their Google account.
+- **Zero Billing / 100% Free:** Uses high-speed free cloud image hosting — no credit cards, Blaze plans, or paid subscriptions required.
+- **24/7 Silent Mac Background Daemon:** Runs natively using Apple's `NSWorkspace` APIs and macOS `launchd`. It works quietly in the background without needing Terminal open.
+- **Auto-Detects Google Drive:** Automatically detects any user's Google Drive folder (`~/Library/CloudStorage/GoogleDrive-*`) and backs up wallpapers locally.
+- **Minimalist Clean UI:** Shows only your active wallpaper preview with a single tap to change it everywhere.
+
+---
+
+## 🛠️ Architecture
 
 ```
                       ┌──────────────────────────────────────────────┐
-                      │          Firebase / Google Cloud             │
+                      │          Firebase & Free Cloud               │
                       │  • Google OAuth (Firebase Auth)              │
-                      │  • Cloud Firestore (Active state & devices)  │
-                      │  • Firebase Storage (High-res wallpapers)    │
-                      │  • Cloud Functions (FCM push triggers)       │
+                      │  • Cloud Firestore (Active state & sync)     │
+                      │  • Zero-Billing Direct Image Hosting         │
                       └──────────────────────┬───────────────────────┘
                                              │
-             ┌───────────────────────────────┼──────────────────────────────┐
-             │                               │                              │
-             ▼                               ▼                              ▼
-    ┌─────────────────┐             ┌─────────────────┐            ┌─────────────────┐
-    │     macOS       │             │     Android     │            │       iOS       │
-    │  MacBook / Mac  │             │   Phone / Tablet│            │  iPhone / iPad  │
-    ├─────────────────┤             ├─────────────────┤            ├─────────────────┤
-    │ NSWorkspace API │             │ WallpaperManager│            │ Apple Shortcuts │
-    │ 100% Background │             │ 100% Background │            │ & App Intents   │
-    │ Desktop update  │             │ Silent FCM sync │            │ Zero-Tap sync   │
-    └─────────────────┘             └─────────────────┘            └─────────────────┘
+             ┌───────────────────────────────┴──────────────────────────────┐
+             │                                                              │
+             ▼                                                              ▼
+    ┌─────────────────┐                                            ┌─────────────────┐
+    │     macOS       │                                            │     Android     │
+    │  MacBook / Mac  │                                            │   Phone / Tablet│
+    ├─────────────────┤                                            ├─────────────────┤
+    │ NSWorkspace API │                                            │ WallpaperManager│
+    │ launchd Agent   │                                            │ Flutter App     │
+    │ 100% Background │                                            │ 1-Tap Sync      │
+    └─────────────────┘                                            └─────────────────┘
 ```
 
 ---
 
-## Platform Automation Details
-
-| Platform | Automation Engine | Behavior |
-| :--- | :--- | :--- |
-| **macOS** | `NSWorkspace.shared.setDesktopImageURL(...)` | **100% Automatic & Silent**. Runs in the background (status menu bar). Updates wallpaper across all connected monitors simultaneously. |
-| **Android** | `WallpaperFCMService` + `WallpaperManager` | **100% Automatic & Unattended**. Receives high-priority silent FCM push messages in the background, downloads the image, and sets Home and Lock screens without user interaction. |
-| **iOS** | `GetSyncedWallpaperIntent` + Apple Shortcuts Automation | **Zero-Tap Automated**. Bypasses Apple's 3rd-party sandbox restrictions via iOS Personal Automation in Apple Shortcuts (see [iOS Setup Guide](file:///Users/prosenjitdebnath/.gemini/antigravity/scratch/wallpaper_sync/ios/AUTOMATION_SETUP.md)). |
-
----
-
-## Project Structure
+## 📂 Repository Structure
 
 ```
 wallpaper_sync/
 ├── lib/
-│   ├── main.dart                  # App bootstrap, auth gate & FCM background handler
-│   ├── models/
-│   │   ├── device_model.dart      # Device registry model (macOS, Android, iOS)
-│   │   └── wallpaper_model.dart   # Wallpaper metadata model
+│   ├── main.dart                  # App bootstrap & auth gate
 │   ├── screens/
-│   │   ├── home_screen.dart       # Current wallpaper preview, library, upload & broadcast
-│   │   ├── login_screen.dart      # Google Sign-In onboarding screen
-│   │   ├── device_list_screen.dart# Real-time list of connected devices
-│   │   └── settings_screen.dart   # Auto-apply toggles & platform options
+│   │   ├── home_screen.dart       # Clean active wallpaper preview & upload
+│   │   └── login_screen.dart      # 1-tap Google Sign-In
 │   └── services/
-│       ├── auth_service.dart      # Google OAuth & Firebase Authentication
-│       ├── sync_service.dart      # Firestore real-time listener & broadcasting
-│       └── wallpaper_service.dart # Native platform channel bridge
+│       ├── auth_service.dart      # Google OAuth authentication
+│       ├── sync_service.dart      # Real-time Firestore sync & cloud upload
+│       └── wallpaper_service.dart # Native wallpaper platform channels
 ├── macos/
-│   ├── Runner/
-│   │   └── MainFlutterWindow.swift # Native macOS Swift NSWorkspace integration
+│   ├── Install_Mac.command        # 1-Click double-clickable Mac installer
+│   ├── Uninstall_Mac.command      # 1-Click Mac uninstaller
 │   └── macos_agent/
-│       ├── wallpaper_daemon.swift  # Native Swift CLI / daemon source
-│       └── wallpaper_sync_mac     # Pre-compiled native macOS test executable
+│       └── universal_sync.swift   # Native Swift background sync daemon
 ├── android/
-│   └── app/src/main/
-│       ├── AndroidManifest.xml    # Permissions (SET_WALLPAPER, WAKE_LOCK, etc.)
-│       └── kotlin/.../
-│           ├── MainActivity.kt    # Android WallpaperManager method channel
-│           └── WallpaperFCMService.kt # Silent background sync FCM receiver
-├── ios/
-│   ├── Runner/
-│   │   ├── AppDelegate.swift      # Shared App Group container storage
-│   │   ├── WallpaperAppIntent.swift# iOS 16+ App Intents for Apple Shortcuts
-│   │   └── Info.plist             # Background fetch & push notification config
-│   └── AUTOMATION_SETUP.md        # Step-by-step Apple Shortcuts automation guide
-└── backend/
-    ├── functions/index.js         # Firebase Cloud Functions (FCM broadcast trigger)
-    ├── firestore.rules            # Security rules for device and user data
-    └── storage.rules              # Security rules for image uploads
+│   └── app/                       # Android Flutter wrapper & native channels
+└── WallpaperSync-Mac.zip          # Packaged 1-click Mac bundle
 ```
 
 ---
 
-## Testing the Native macOS Wallpaper Engine
+## 🗑️ How to Uninstall
 
-A pre-compiled native macOS engine is available right now:
-
-```bash
-# 1. Test setting wallpaper with any local image:
-/Users/prosenjitdebnath/.gemini/antigravity/scratch/wallpaper_sync/macos/macos_agent/wallpaper_sync_mac /path/to/any_image.jpg
-
-# 2. Or test setting wallpaper directly from a remote image URL:
-/Users/prosenjitdebnath/.gemini/antigravity/scratch/wallpaper_sync/macos/macos_agent/wallpaper_sync_mac https://images.unsplash.com/photo-1506744038136-46273834b3fb
-```
-
----
-
-## Setup & Running the Flutter App
-
-### 1. Prerequisites
-- [Flutter SDK](https://docs.flutter.dev/get-started/install) installed.
-- A Firebase project with **Authentication (Google)**, **Cloud Firestore**, **Storage**, and **Cloud Messaging** enabled.
-
-### 2. Configure Firebase
-- Place your `google-services.json` into `android/app/`.
-- Place your `GoogleService-Info.plist` into `ios/Runner/` and `macos/Runner/`.
-
-### 3. Run the App
-```bash
-cd /Users/prosenjitdebnath/.gemini/antigravity/scratch/wallpaper_sync
-
-# Fetch dependencies
-flutter pub get
-
-# Run on macOS
-flutter run -d macos
-
-# Run on Android
-flutter run -d android
-
-# Run on iOS
-flutter run -d ios
-```
+- **Android:** Long press the **Wallpaper Sync** icon on your phone and tap **Uninstall**.
+- **Mac:** Double-click **`Uninstall_Mac.command`** in the Mac bundle.

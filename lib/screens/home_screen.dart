@@ -84,6 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ? 'Wallpaper'
             : titleController.text.trim(),
         userId: auth.currentUser!.uid,
+        userEmail: auth.currentUser!.email ?? '',
       );
 
       if (mounted) {

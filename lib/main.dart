@@ -95,9 +95,14 @@ class AuthGate extends StatelessWidget {
 
         if (snapshot.hasData && snapshot.data != null) {
           // Initialize sync service for logged in user
-          final userId = snapshot.data!.uid;
+          final user = snapshot.data!;
+          final userId = user.uid;
+          final userEmail = user.email ?? '';
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            Provider.of<SyncService>(context, listen: false).initialize(userId);
+            Provider.of<SyncService>(context, listen: false).initialize(
+              userId,
+              userEmail: userEmail,
+            );
           });
           return const HomeScreen();
         }
