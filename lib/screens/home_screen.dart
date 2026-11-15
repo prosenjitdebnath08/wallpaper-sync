@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:wallpaper_sync/models/wallpaper_model.dart';
@@ -19,17 +19,18 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool _isUploading = false;
+  final ImagePicker _picker = ImagePicker();
 
   Future<void> _pickAndUploadWallpaper() async {
     try {
-      final FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.image,
+      final XFile? pickedFile = await _picker.pickImage(
+        source: ImageSource.gallery,
       );
 
-      if (result == null || result.files.single.path == null) return;
+      if (pickedFile == null) return;
 
-      final File imageFile = File(result.files.single.path!);
-      final String originalName = result.files.single.name;
+      final File imageFile = File(pickedFile.path);
+      final String originalName = pickedFile.name;
 
       if (!mounted) return;
 

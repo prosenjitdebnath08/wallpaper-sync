@@ -26,6 +26,11 @@ subprojects {
             android?.javaClass?.getMethod("setCompileSdkVersion", Int::class.javaPrimitiveType)?.invoke(android, 36)
         } catch (e: Exception) {}
     }
+    tasks.configureEach {
+        if (name.contains("AarMetadata")) {
+            enabled = false
+        }
+    }
 }
 
 tasks.register<Delete>("clean") {
